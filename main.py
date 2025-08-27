@@ -1,4 +1,4 @@
-from fastapi import FastAPI,Depends,HTTPException,status
+from fastapi import FastAPI,Depends,HTTPException
 from fastapi.responses import RedirectResponse
 from database import create_db, get_db
 import random
@@ -13,16 +13,18 @@ def create_db_table():
     create_db()
 
 def generate_url(len=6):
+    """ This function is generate a random string and length if the string is 6 which help to enerate url"""
     return  ''.join(random.choices(string.ascii_letters + string.digits, k=len))
-
 
 @app.post("/short_url")
 def create_short_url(data: GenerateUrl, session:Session = Depends(get_db)):
+    """this function is use for short url.
+    user can give original url """
     short = generate_url()
     while session.get(ShortUrl, short):
         short = generate_url()
 
-    expire_time=data.expire_at or (datetime.now()+timedelta(minutes=5))
+    expire_time=(datetime.now()+timedelta(minutes=1))
     short_urls = ShortUrl(
         short_url=short,
         original_url=str(data.original_url),
@@ -74,10 +76,10 @@ def redirect_to_url(short_code: str, db: Session = Depends(get_db)):
     if not url_entry:
         raise HTTPException(status_code=404, detail="URL not found")
 
-    if url_entry.expire_at and url_entry.expire_at < datetime.now():
+    if url_entry.expire_at < datetime.now():
         raise HTTPException(status_code=410, detail="URL expired")
 
-    return RedirectResponse(url=url_entry.original_url,status_code=status.HTTP_308_PERMANENT_REDIRECT)
+    return RedirectResponse(url=url_entry.original_url)
 
 
 

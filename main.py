@@ -18,13 +18,17 @@ def generate_url(len=6):
 
 @app.post("/short_url")
 def create_short_url(data: GenerateUrl, session:Session = Depends(get_db)):
-    """this function is use for short url.
-    user can give original url """
+    """this function is use for create short url.
+    user can give original url and this function will generate a random url 
+    that url will redirect to the original url"""
     short = generate_url()
+    """short is store the generated random string"""
     while session.get(ShortUrl, short):
         short = generate_url()
 
-    expire_time=(datetime.now()+timedelta(minutes=1))
+    expire_time=(datetime.now()+timedelta(minutes=5))
+    """expire_time is holding the expire time. 
+    mins when the url will get expire """
     short_urls = ShortUrl(
         short_url=short,
         original_url=str(data.original_url),
@@ -61,8 +65,11 @@ def all_url(session:Session=Depends(get_db)):
 
 @app.delete("/Delete_URL/{short_code}")
 def delete_url(short_code,session:Session=Depends(get_db)):
+    """this function is used for delete the particular url
+    user can give the respective generated url if the url is mach then this function will delete the url from the database """
     data=session.get(ShortUrl,short_code)
     if not data:
+        """checking url is valid or not"""
         raise HTTPException(status_code=404,detail="url not found!")
     session.delete(data)
     session.commit()
@@ -74,9 +81,11 @@ def redirect_to_url(short_code: str, db: Session = Depends(get_db)):
     url_entry = db.get(ShortUrl, short_code)
 
     if not url_entry:
+        """checking url is valid or not"""
         raise HTTPException(status_code=404, detail="URL not found")
 
     if url_entry.expire_at < datetime.now():
+        """checking url is expire or not"""
         raise HTTPException(status_code=410, detail="URL expired")
 
     return RedirectResponse(url=url_entry.original_url)

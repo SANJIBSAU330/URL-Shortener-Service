@@ -13,3 +13,5 @@ class ShortUrl(SQLModel,table=True):
 class GenerateUrl(SQLModel):
     original_url:HttpUrl
     
+class GenerateUrlUpdate(SQLModel):
+    original_url:Optional[str]=None

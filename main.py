@@ -4,7 +4,7 @@ from database import create_db, get_db
 import random
 import string
 from sqlmodel import Session,select
-from schemas import ShortUrl,GenerateUrl
+from schemas import ShortUrl,GenerateUrl,GenerateUrlUpdate
 from datetime import datetime,timedelta
 
 app=FastAPI(title="URL Shortener Service")
@@ -13,7 +13,7 @@ def create_db_table():
     create_db()
 
 def generate_url(len=6):
-    """ This function is generate a random string and length if the string is 6 which help to enerate url"""
+    """ This function is generate a random string and length of the string is 6 which help to generate url"""
     return  ''.join(random.choices(string.ascii_letters + string.digits, k=len))
 
 @app.post("/short_url")
@@ -42,6 +42,28 @@ def create_short_url(data: GenerateUrl, session:Session = Depends(get_db)):
         "short_code": short_urls.short_url,
         "short_url": f"http://localhost:8000/{short_urls.short_url}",
         "expires_at": short_urls.expire_at
+    }
+
+@app.put("/update_url/{short_url}")
+def update_url(short_url:str,update:GenerateUrlUpdate,session:Session=Depends(get_db)):
+    old=session.get(ShortUrl,short_url)
+    short = generate_url()
+    """short is store the generated random string"""
+    while session.get(ShortUrl, short):
+        short = generate_url()
+    if not old:
+        raise HTTPException(status_code=404,detail="Not Found")
+    if update.original_url is not None:
+        old.original_url=update.original_url
+        old.expire_at=datetime.now()+timedelta(minutes=5)
+        old.short_url=short
+    session.add(old)
+    session.commit()
+    session.refresh(old)
+    return{
+        "short_code":old.short_url,
+        "short_url": f"http://localhost:8000/{old.short_url}",
+        "expires_at":old.expire_at
     }
 
 @app.get("/show_all_URL")
